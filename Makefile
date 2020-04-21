@@ -1,4 +1,5 @@
-IDIR =./include
+IDIR =./include \
+	./libs/include
 	
 CC=g++ -std=c++11
 CFLAGS= \
