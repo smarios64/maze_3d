@@ -1,9 +1,8 @@
-IDIR =./include \
-	./libs/include
+IDIR =-I./include \
+	-I./libs/include
 	
 CC=g++ -std=c++11
-CFLAGS= \
-	-I$(IDIR)
+CFLAGS=$(IDIR)
 
 ODIR=obj
 SRC_DIR=./src
