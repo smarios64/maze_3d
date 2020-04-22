@@ -45,7 +45,7 @@ const char *fragmentShaderSource = "#version 330 core\n"
 
 static int shaderProgram = -1;
 
-static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<unsigned int> &indices, const mach::Vector2 &point);
+static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<GLuint> &indices, const mach::Vector2 &point);
 
 Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height)
 {
@@ -93,7 +93,7 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
 
     // inner walls
     std::vector<mach::Vector2> vertices;
-    std::vector<unsigned int> indices;
+    std::vector<GLuint> indices;
     const GLfloat h = 1.5 / (height + 1);
     const GLfloat w = 1.5 / width;
     for (int y = 0; y < height; ++y) {
@@ -127,7 +127,7 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     glBufferData(GL_ARRAY_BUFFER, sizeof(mach::Vector2) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(mach::Vector2), (void*)0);
     glEnableVertexAttribArray(0);
@@ -167,9 +167,9 @@ void Minimap::draw()
     glBindVertexArray(0);
 }
 
-static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<unsigned int> &indices, const mach::Vector2 &point)
+static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<GLuint> &indices, const mach::Vector2 &point)
 {
-    unsigned int index;
+    GLuint index;
     std::vector<mach::Vector2>::const_iterator itr = std::find(vertices.cbegin(), vertices.cend(), point);
 
     if (itr != vertices.cend()) {
