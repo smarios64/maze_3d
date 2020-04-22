@@ -1,13 +1,12 @@
 INCLUDES =-I./include \
-	-I./libs/include
+	-I./libs/stb_image \
+	-I./libs/mach/include
 	
 CC=g++ -std=c++11
 CFLAGS=
 
 ODIR=obj
 SRC_DIR=./src
-
-LIBS_DIR=
 	
 LIBS= \
 	-lGLEW \
@@ -16,7 +15,8 @@ LIBS= \
 
 _OBJ= \
 	minimap.o \
-	game.o
+	game.o \
+	matrix.o
 
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
@@ -32,11 +32,15 @@ debug: CFLAGS += -D DEBUG -g
 debug: $(OUTPUT)
 
 $(OUTPUT): main.cpp $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(INCLUDES) $(LIBS_DIR) $(LIBS)
+	$(CC) -o $@ $^ $(CFLAGS) $(INCLUDES) $(LIBS)
 
 $(ODIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(ODIR)
-	$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDES) $(LIBS_DIR) $(LIBS)
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDES) $(LIBS)
+
+$(ODIR)/%.o: ./libs/mach/src/%.cpp
+	@mkdir -p $(ODIR)
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDES) $(LIBS)
 
 .PHONY: clean
 

@@ -24,20 +24,11 @@
 
 #include "minimap.h"
 #include "console.h"
+#include "vector.h"
 
 #include <GL/glew.h>
 #include <vector>
 #include <algorithm>
-
-struct Point2D
-{
-    float x;
-    float y;
-};
-
-bool operator==(const Point2D &lhs, const Point2D &rhs) {
-    return lhs.x == rhs.x && lhs.y == rhs.y;
-}
 
 const char *vertexShaderSource = "#version 330 core\n"
     "layout (location = 0) in vec2 aPos;\n"
@@ -54,7 +45,7 @@ const char *fragmentShaderSource = "#version 330 core\n"
 
 static int shaderProgram = -1;
 
-static void insertVertex(std::vector<Point2D> &vertices, std::vector<unsigned int> &indices, const Point2D &point);
+static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<unsigned int> &indices, const mach::Vector2 &point);
 
 Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height)
 {
@@ -101,10 +92,10 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     }
 
     // inner walls
-    std::vector<Point2D> vertices;
+    std::vector<mach::Vector2> vertices;
     std::vector<unsigned int> indices;
-    const float h = 1.5 / (height + 1);
-    const float w = 1.5 / width;
+    const GLfloat h = 1.5 / (height + 1);
+    const GLfloat w = 1.5 / width;
     for (int y = 0; y < height; ++y) {
         for (int x = (y % 2 == 0 ? 1 : 0); x < width; ++x) {
             if (walls[y * width + x]) {
@@ -133,12 +124,12 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(Point2D) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(mach::Vector2) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * indices.size(), &indices[0], GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Point2D), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(mach::Vector2), (void*)0);
     glEnableVertexAttribArray(0);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
@@ -176,13 +167,13 @@ void Minimap::draw()
     glBindVertexArray(0);
 }
 
-static void insertVertex(std::vector<Point2D> &vertices, std::vector<unsigned int> &indices, const Point2D &point)
+static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<unsigned int> &indices, const mach::Vector2 &point)
 {
     unsigned int index;
-    std::vector<Point2D>::iterator itr = std::find(vertices.begin(), vertices.end(), point);
+    std::vector<mach::Vector2>::const_iterator itr = std::find(vertices.cbegin(), vertices.cend(), point);
 
     if (itr != vertices.cend()) {
-        index = std::distance(vertices.begin(), itr);
+        index = std::distance(vertices.cbegin(), itr);
     }
     else {
         index = vertices.size();
