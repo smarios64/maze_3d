@@ -24,84 +24,79 @@
 
 #include "minimap.h"
 #include "console.h"
-#include "vector.h"
+#include "shader.h"
 
 #include <GL/glew.h>
 #include <vector>
 #include <algorithm>
 
-const char *vertexShaderSource = "#version 330 core\n"
-    "layout (location = 0) in vec2 aPos;\n"
-    "void main()\n"
-    "{\n"
-    "   gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
-    "}\0";
-const char *fragmentShaderSource = "#version 330 core\n"
-    "out vec4 FragColor;\n"
-    "void main()\n"
-    "{\n"
-    "   FragColor = vec4(1.0f, 0.75f, 0.2f, 1.0f);\n"
-    "}\0";
+namespace mach {
+    bool operator==(const Vector2 &lhs, const Vector2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+}
 
-static int shaderProgram = -1;
+static Shader minimapShader;
 
 static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<GLuint> &indices, const mach::Vector2 &point);
 
 Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height)
 {
-    if (shaderProgram == -1) {
-        // build and compile our shader program
-        // ------------------------------------
-        // vertex shader
-        int vertexShader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertexShader, 1, &vertexShaderSource, NULL);
-        glCompileShader(vertexShader);
-        // check for shader compile errors
-        int success;
-        char infoLog[512];
-        glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(vertexShader, 512, NULL, infoLog);
-            CONSOLE_ERROR("SHADER::VERTEX::COMPILATION_FAILED -> %s", infoLog);
-        }
-        // fragment shader
-        int fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragmentShader, 1, &fragmentShaderSource, NULL);
-        glCompileShader(fragmentShader);
-        // check for shader compile errors
-        glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
-        if (!success)
-        {
-            glGetShaderInfoLog(fragmentShader, 512, NULL, infoLog);
-            CONSOLE_ERROR("SHADER::FRAGMENT::COMPILATION_FAILED -> %s", infoLog);
-        }
-        // link shaders
-        shaderProgram = glCreateProgram();
-        glAttachShader(shaderProgram, vertexShader);
-        glAttachShader(shaderProgram, fragmentShader);
-        glLinkProgram(shaderProgram);
-        // check for linking errors
-        glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
-        if (!success) {
-            glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
-            CONSOLE_ERROR("SHADER::PROGRAM::LINKING_FAILED -> %s", infoLog);
-        }
-        glDeleteShader(vertexShader);
-        glDeleteShader(fragmentShader);
+    if (minimapShader.id() == -1) {
+        const char *vertexShaderSource = "#version 330 core\n"
+            "layout (location = 0) in vec2 aPos;\n"
+            "void main()\n"
+            "{\n"
+            "   gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+            "}\0";
+        const char *fragmentShaderSource = "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "void main()\n"
+            "{\n"
+            "   FragColor = vec4(1.0f, 0.75f, 0.2f, 1.0f);\n"
+            "}\0";
+        minimapShader.compile(vertexShaderSource, fragmentShaderSource);
     }
-
     // inner walls
     std::vector<mach::Vector2> vertices;
     std::vector<GLuint> indices;
     const GLfloat h = 1.5 / (height + 1);
     const GLfloat w = 1.5 / width;
-    for (int y = 0; y < height; ++y) {
-        for (int x = (y % 2 == 0 ? 1 : 0); x < width; ++x) {
-            if (walls[y * width + x]) {
-                insertVertex(vertices, indices, { w * x - 0.75f, h * y - 0.75f + (y % 2 == 0 ? 0 : h) });
-                insertVertex(vertices, indices, { w * x - 0.75f + (y % 2 == 0 ? 0 : w), h * y - 0.75f + (y % 2 == 0 ? h * 2 : h) });
+    
+    // vertical walls
+    for (int x = 1; x < width; ++x) {
+        int startY = -1;
+        int endY = -1;
+        for (int y = 0; y < height + 2; y += 2) {
+            if (y < height && walls[y * width + x]) {
+                if (startY == -1) {
+                    startY = y;
+                }
+                endY = y;
+            }
+            else if (startY != -1) {
+                insertVertex(vertices, indices, { w * x - 0.75f, (h * startY - 0.75f) * -1 });
+                insertVertex(vertices, indices, { w * x - 0.75f, (h * endY - 0.75f + h * 2) * -1 });
                 numPoints += 2;
+                endY = startY = -1;
+            }
+        }
+    }
+    
+    // horizontal walls
+    for (int y = 1; y < height; y += 2) {
+        int startX = -1;
+        int endX = -1;
+        for (int x = 0; x <= width; ++x) {
+            if (x < width && walls[y * width + x]) {
+                if (startX == -1) {
+                    startX = x;
+                }
+                endX = x;
+            }
+            else if (startX != -1) {
+                insertVertex(vertices, indices, { w * startX - 0.75f, (h * y - 0.75f + h) * -1 });
+                insertVertex(vertices, indices, { w * endX - 0.75f + w, (h * y - 0.75f + h) * -1 });
+                numPoints += 2;
+                endX = startX = -1;
             }
         }
     }
@@ -147,8 +142,6 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
 
 Minimap::~Minimap()
 {
-    // optional: de-allocate all resources once they've outlived their purpose:
-    // ------------------------------------------------------------------------
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
@@ -158,7 +151,7 @@ Minimap::~Minimap()
 
 void Minimap::draw()
 {
-    glUseProgram(shaderProgram);
+    minimapShader.use();
     glBindVertexArray(VAO);
     glLineWidth(2);
     glPolygonMode(GL_FRONT, GL_LINE);

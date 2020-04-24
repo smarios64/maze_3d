@@ -16,36 +16,25 @@
  */
 
 /*
- * File:   game.h
+ * File:   maze.h
  * Author: Marios Christoforakis
  *
- * Created on April 20, 2020, 14:51
+ * Created on April 23, 2020, 09:58
  */
 
-#ifndef GAME_H
-#define GAME_H
+#ifndef MAZE_H
+#define MAZE_H
 
-class MazeCell;
-class Minimap;
-class Maze;
-
-class Game
+class Maze
 {
 public:
-    static Game *Instance();
+    Maze();
+    virtual ~Maze();
 
-    void reset();
     void draw();
     
 private:
-    Game();
-    virtual ~Game();
-
-    void generateMaze(MazeCell *cell);
-    void resetMaze();
-
-    Minimap *m_minimap;
-    Maze    *m_maze;
+    unsigned int VBO, VAO, EBO;
 };
 
 #endif

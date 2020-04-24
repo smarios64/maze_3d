@@ -16,7 +16,9 @@ LIBS= \
 _OBJ= \
 	minimap.o \
 	game.o \
-	matrix.o
+	maze.o \
+	matrix.o \
+	shader.o
 
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 

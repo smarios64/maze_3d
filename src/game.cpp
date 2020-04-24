@@ -24,6 +24,7 @@
 
 #include "game.h"
 #include "minimap.h"
+#include "maze.h"
 #include "console.h"
 
 #include <time.h>
@@ -83,6 +84,7 @@ Game::Game()
     resetMaze();
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
     m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1);
+    m_maze = new Maze();
     CONSOLE_DEBUG("Game [%p] created.", this);
 }
 
@@ -94,6 +96,7 @@ Game::~Game()
 
 void Game::draw()
 {
+    m_maze->draw();
     m_minimap->draw();
 }
 
@@ -102,7 +105,9 @@ void Game::reset()
     resetMaze();
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
     delete m_minimap;
+    delete m_maze;
     m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1);
+    m_maze = new Maze();
     CONSOLE_DEBUG("Game [%p] was resetted.", this);
 }
 
