@@ -25,6 +25,8 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "camera.h"
+
 class MazeCell;
 class Minimap;
 class Maze;
@@ -32,10 +34,32 @@ class Maze;
 class Game
 {
 public:
+    enum InputKey {
+        KEY_UP_1,
+        KEY_DOWN_1,
+        KEY_LEFT_1,
+        KEY_RIGHT_1,
+        KEY_UP_2,
+        KEY_DOWN_2,
+        KEY_LEFT_2,
+        KEY_RIGHT_2,
+        KEY_MOVE_UP,
+        KEY_MOVE_DOWN,
+        KEY_MINIMAP,
+        KEY_RESET
+    };
+
+    enum InputKeyState {
+        KEY_STATE_PRESSED,
+        KEY_STATE_RELEASED
+    };
+
     static Game *Instance();
 
-    void reset();
+    void update(float deltaTime);
     void draw();
+    void processKeyInput(InputKey key, InputKeyState state);
+    void processMouseInput(double xPos, double yPos);
     
 private:
     Game();
@@ -43,9 +67,12 @@ private:
 
     void generateMaze(MazeCell *cell);
     void resetMaze();
+    void reset();
 
+    Camera camera;
     Minimap *m_minimap;
     Maze    *m_maze;
+    bool     m_showMinimap;
 };
 
 #endif

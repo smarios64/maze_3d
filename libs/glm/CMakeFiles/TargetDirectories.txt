@@ -1,0 +1,3 @@
+/home/mach/Downloads/glm/glm/CMakeFiles/edit_cache.dir
+/home/mach/Downloads/glm/glm/CMakeFiles/rebuild_cache.dir
+/home/mach/Downloads/glm/glm/CMakeFiles/glm_dummy.dir

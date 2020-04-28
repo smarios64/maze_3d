@@ -25,16 +25,21 @@
 #ifndef MAZE_H
 #define MAZE_H
 
+class Camera;
+
 class Maze
 {
 public:
-    Maze();
+
+    Maze(bool *walls, const unsigned int width, const unsigned int height, Camera *camera);
     virtual ~Maze();
 
     void draw();
     
 private:
     unsigned int VBO, VAO, EBO;
+    unsigned int numPoints;
+    Camera *camera;
 };
 
 #endif

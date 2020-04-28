@@ -1,4 +1,5 @@
 INCLUDES =-I./include \
+	-I./libs \
 	-I./libs/stb_image \
 	-I./libs/mach/include
 	
@@ -17,7 +18,6 @@ _OBJ= \
 	minimap.o \
 	game.o \
 	maze.o \
-	matrix.o \
 	shader.o
 
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))

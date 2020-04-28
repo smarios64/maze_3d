@@ -24,42 +24,69 @@
 
 #include "minimap.h"
 #include "console.h"
+#include "camera.h"
 #include "shader.h"
+#include "common.h"
 
 #include <GL/glew.h>
 #include <vector>
 #include <algorithm>
 
-namespace mach {
-    bool operator==(const Vector2 &lhs, const Vector2 &rhs) { return lhs.x == rhs.x && lhs.y == rhs.y; }
+#define MAP_WIDTH 0.5f
+#define MAP_HEIGHT 0.5f
+#define MAP_X    0.4f
+#define MAP_Y    0.9f
+
+struct VertexData2D
+{
+    glm::vec2 position;
+    glm::vec3 color;
+};
+
+bool operator==(const VertexData2D &lhs, const VertexData2D &rhs)
+{
+    return lhs.position == rhs.position && lhs.color == rhs.color;
 }
 
 static Shader minimapShader;
+static VertexData2D playerData = { { 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
 
-static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<GLuint> &indices, const mach::Vector2 &point);
+static void insertVertex(std::vector<VertexData2D> &vertices, std::vector<GLuint> &indices, const VertexData2D &point);
 
-Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height)
+Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height, Camera *camera)
+    : numPoints(0), camera(camera), m_width(width), m_height((height + 1) / 2)
 {
     if (minimapShader.id() == -1) {
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec2 aPos;\n"
+            "layout (location = 1) in vec3 color;\n"
+            "out vec3 outColor;\n"
             "void main()\n"
             "{\n"
-            "   gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
+            "  outColor = color;\n"
+            "  gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);\n"
             "}\0";
         const char *fragmentShaderSource = "#version 330 core\n"
             "out vec4 FragColor;\n"
+            "in vec3 outColor;\n"
             "void main()\n"
             "{\n"
-            "   FragColor = vec4(1.0f, 0.75f, 0.2f, 1.0f);\n"
+            "  FragColor = vec4(outColor, 0.7f);\n"
             "}\0";
         minimapShader.compile(vertexShaderSource, fragmentShaderSource);
     }
     // inner walls
-    std::vector<mach::Vector2> vertices;
+    std::vector<VertexData2D> vertices;
     std::vector<GLuint> indices;
-    const GLfloat h = 1.5 / (height + 1);
-    const GLfloat w = 1.5 / width;
+    const GLfloat h = MAP_HEIGHT / (height + 1);
+    const GLfloat w = MAP_WIDTH / width;
+    const glm::vec3 wallsColor(1.0f, 1.0f, 0.0f);
+
+    // background
+    vertices.push_back({ {MAP_X, MAP_Y}, { 0.0f, 0.0f, 0.0f } });  // top left
+    vertices.push_back({ {MAP_X, MAP_Y - MAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } }); // bottom left
+    vertices.push_back({ {MAP_X + MAP_WIDTH, MAP_Y}, { 0.0f, 0.0f, 0.0f } });   // top right
+    vertices.push_back({ {MAP_X + MAP_WIDTH, MAP_Y - MAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } });  // bottom right
     
     // vertical walls
     for (int x = 1; x < width; ++x) {
@@ -73,8 +100,8 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
                 endY = y;
             }
             else if (startY != -1) {
-                insertVertex(vertices, indices, { w * x - 0.75f, (h * startY - 0.75f) * -1 });
-                insertVertex(vertices, indices, { w * x - 0.75f, (h * endY - 0.75f + h * 2) * -1 });
+                insertVertex(vertices, indices, { { w * x + MAP_X, (h * startY - MAP_Y) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * x + MAP_X, (h * endY - MAP_Y + h * 2) * -1 }, wallsColor });
                 numPoints += 2;
                 endY = startY = -1;
             }
@@ -93,8 +120,8 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
                 endX = x;
             }
             else if (startX != -1) {
-                insertVertex(vertices, indices, { w * startX - 0.75f, (h * y - 0.75f + h) * -1 });
-                insertVertex(vertices, indices, { w * endX - 0.75f + w, (h * y - 0.75f + h) * -1 });
+                insertVertex(vertices, indices, { { w * startX + MAP_X, (h * y -  MAP_Y + h) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * endX + MAP_X + w, (h * y - MAP_Y + h) * -1 }, wallsColor });
                 numPoints += 2;
                 endX = startX = -1;
             }
@@ -102,10 +129,10 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     }
 
     // outer walls
-    vertices.push_back({-0.75f, 0.75f});  // top left
-    vertices.push_back({0.75f, 0.75f});   // top right
-    vertices.push_back({0.75f, -0.75f});  // bottom right
-    vertices.push_back({-0.75f, -0.75f}); // bottom left
+    vertices.push_back({ vertices[3].position, wallsColor });  // bottom right
+    vertices.push_back({ vertices[2].position, wallsColor });   // top right
+    vertices.push_back({ vertices[0].position, wallsColor });  // top left
+    vertices.push_back({ vertices[1].position, wallsColor }); // bottom left
     for (int i = 8; i > 1; --i) {
         indices.push_back(vertices.size() - i / 2);
     }
@@ -119,13 +146,30 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(mach::Vector2) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(VertexData2D) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * indices.size(), &indices[0], GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(mach::Vector2), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData2D), (void*)0);
     glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData2D), (void*)(sizeof(glm::vec2)));
+    glEnableVertexAttribArray(1);
+    
+    glGenVertexArrays(1, &player_VAO);
+    glGenBuffers(1, &player_VBO);
+    // bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
+    glBindVertexArray(player_VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, player_VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(playerData), &playerData, GL_DYNAMIC_DRAW);
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(playerData), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(playerData), (void*)(sizeof(glm::vec2)));
+    glEnableVertexAttribArray(1);
 
     // note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
@@ -136,6 +180,9 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
     // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
     glBindVertexArray(0); 
+    glLineWidth(2);
+    glPointSize(7);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     CONSOLE_DEBUG("Minimap [%p] created.", this);
 }
@@ -144,26 +191,40 @@ Minimap::~Minimap()
 {
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
+    glDeleteVertexArrays(1, &player_VAO);
+    glDeleteBuffers(1, &player_VBO);
     glDeleteBuffers(1, &EBO);
 
     CONSOLE_DEBUG("Minimap [%p] destroyed.", this);
 }
 
-void Minimap::draw()
+void Minimap::update()
 {
-    minimapShader.use();
-    glBindVertexArray(VAO);
-    glLineWidth(2);
-    glPolygonMode(GL_FRONT, GL_LINE);
-    glDrawElements(GL_LINES, numPoints, GL_UNSIGNED_INT, 0);
-    //glDrawArrays(GL_LINES, 0, numPoints);
-    glBindVertexArray(0);
+    playerData.position.x = camera->Position.x / ((WALL_SIZE + COLUMN_SIZE) * m_width - COLUMN_SIZE) * MAP_WIDTH + MAP_X;
+    playerData.position.y = -(camera->Position.z / ((WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE) * MAP_HEIGHT - MAP_Y);
 }
 
-static void insertVertex(std::vector<mach::Vector2> &vertices, std::vector<GLuint> &indices, const mach::Vector2 &point)
+void Minimap::draw()
+{
+    glDisable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    minimapShader.use();
+    glBindVertexArray(VAO);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+    glDrawElements(GL_LINES, numPoints, GL_UNSIGNED_INT, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, player_VBO);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(playerData.position), &playerData.position);
+    glBindVertexArray(player_VAO);
+    glDrawArrays(GL_POINTS, 0, 1);
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+}
+
+static void insertVertex(std::vector<VertexData2D> &vertices, std::vector<GLuint> &indices, const VertexData2D &point)
 {
     GLuint index;
-    std::vector<mach::Vector2>::const_iterator itr = std::find(vertices.cbegin(), vertices.cend(), point);
+    std::vector<VertexData2D>::const_iterator itr = std::find(vertices.cbegin(), vertices.cend(), point);
 
     if (itr != vertices.cend()) {
         index = std::distance(vertices.cbegin(), itr);

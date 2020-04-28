@@ -25,17 +25,22 @@
 #ifndef MINIMAP_H
 #define MINIMAP_H
 
+class Camera;
+
 class Minimap
 {
 public: 
-    Minimap(bool *walls, const unsigned int width, const unsigned int height);
+    Minimap(bool *walls, const unsigned int width, const unsigned int height, Camera *camera);
     virtual ~Minimap();
 
+    void update();
     void draw();
     
 private:
-    unsigned int VBO, VAO, EBO;
+    unsigned int VBO, VAO, EBO, player_VBO, player_VAO;
     unsigned int numPoints;
+    unsigned int m_width, m_height;
+    Camera *camera;
 };
 
 #endif

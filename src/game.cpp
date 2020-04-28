@@ -26,16 +26,12 @@
 #include "minimap.h"
 #include "maze.h"
 #include "console.h"
+#include "common.h"
 
 #include <time.h>
 #include <stdlib.h> 
 #include <vector>
-
-#define MAZE_WIDTH 16
-#define MAZE_HEIGHT 12
-#define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define MIN(a, b) ((a) < (b) ? (a) : (b))
-#define ABS(a) ((a) >= 0 ? (a) : -(a))
+#include <map>
 
 struct MazeCell
 {
@@ -43,6 +39,11 @@ struct MazeCell
     bool visited;
     std::vector<MazeCell*> neighbors;
 };
+
+static float lastX;
+static float lastY;
+static bool firstMouse = true;
+static std::map<Game::InputKey, bool> keyStates;
 
 // use the even y indexes for the walls that separate the cells horizontally
 // and the odd y indexes for the walls that separate the cells vertically
@@ -83,8 +84,19 @@ Game::Game()
     }
     resetMaze();
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
-    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1);
-    m_maze = new Maze();
+    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+    m_maze = new Maze(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+
+    camera.Position = glm::vec3(WALL_SIZE / 2.0f);
+    if (!walls[0][1]) {
+        camera.Yaw = 0.0f;
+    }
+    else {
+        camera.Yaw = 90.0f;
+    }
+    // trigger an update in camera vectors
+    camera.ProcessMouseMovement(0, 0);
+
     CONSOLE_DEBUG("Game [%p] created.", this);
 }
 
@@ -97,7 +109,9 @@ Game::~Game()
 void Game::draw()
 {
     m_maze->draw();
-    m_minimap->draw();
+    if (m_showMinimap) {
+        m_minimap->draw();
+    }
 }
 
 void Game::reset()
@@ -106,8 +120,20 @@ void Game::reset()
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
     delete m_minimap;
     delete m_maze;
-    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1);
-    m_maze = new Maze();
+    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+    m_maze = new Maze(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+
+    camera.Position = glm::vec3(WALL_SIZE / 2.0f);
+    camera.Pitch = 0.0f;
+    if (!walls[0][1]) {
+        camera.Yaw = 0.0f;
+    }
+    else {
+        camera.Yaw = 90.0f;
+    }
+    // trigger an update in camera vectors
+    camera.ProcessMouseMovement(0, 0);
+
     CONSOLE_DEBUG("Game [%p] was resetted.", this);
 }
 
@@ -148,4 +174,75 @@ void Game::resetMaze()
             walls[y][x] = true;
         }
     }
+}
+
+void Game::update(float deltaTime)
+{
+    if (keyStates[KEY_UP_1]) {
+        camera.ProcessKeyboard(Camera::FORWARD, deltaTime);
+    }
+    if (keyStates[KEY_DOWN_1]) {
+        camera.ProcessKeyboard(Camera::BACKWARD, deltaTime);
+    }
+    if (keyStates[KEY_LEFT_1]) {
+        camera.ProcessKeyboard(Camera::LEFT, deltaTime);
+    }
+    if (keyStates[KEY_RIGHT_1]) {
+        camera.ProcessKeyboard(Camera::RIGHT, deltaTime);
+    }
+    if (keyStates[KEY_MOVE_UP]) {
+        camera.ProcessKeyboard(Camera::UP, deltaTime);
+    }
+    if (keyStates[KEY_MOVE_DOWN]) {
+        camera.ProcessKeyboard(Camera::DOWN, deltaTime);
+    }
+    if (keyStates[KEY_UP_2]) {
+        camera.ProcessMouseMovement(0, 1000 * deltaTime);
+    }
+    if (keyStates[KEY_DOWN_2]) {
+        camera.ProcessMouseMovement(0, -1000 * deltaTime);
+    }
+    if (keyStates[KEY_LEFT_2]) {
+        camera.ProcessMouseMovement(-1000 * deltaTime, 0);
+    }
+    if (keyStates[KEY_RIGHT_2]) {
+        camera.ProcessMouseMovement(1000 * deltaTime, 0);
+    }
+    m_minimap->update();
+}
+
+void Game::processKeyInput(InputKey key, InputKeyState state)
+{
+    // conditional to handle undesired continuous key events
+    if (!keyStates[key] && state == KEY_STATE_PRESSED) {
+        switch (key) {
+            case KEY_MINIMAP:
+                m_showMinimap = !m_showMinimap;
+                break;
+            case KEY_RESET:
+                reset();
+                break;
+            default:
+                break;
+        }
+    }
+    keyStates[key] = state == KEY_STATE_PRESSED;
+}
+
+void Game::processMouseInput(double xPos, double yPos)
+{
+    if (firstMouse)
+    {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+
+    float xoffset = xPos - lastX;
+    float yoffset = lastY - yPos; // reversed since y-coordinates go from bottom to top
+
+    lastX = xPos;
+    lastY = yPos;
+
+    camera.ProcessMouseMovement(xoffset * 3, yoffset);
 }
