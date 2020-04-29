@@ -15,4 +15,9 @@
 #define COLUMN_SIZE 0.2f
 #define HALF_COLUMN_SIZE (COLUMN_SIZE / 2.0f)
 
+#define MINIMAP_WIDTH 0.5f
+#define MINIMAP_HEIGHT 0.5f
+#define MINIMAP_X    0.4f
+#define MINIMAP_Y    0.9f
+
 #endif // _COMMON_H_

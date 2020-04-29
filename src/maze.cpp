@@ -35,15 +35,21 @@
 #include <algorithm>
 #include <glm/gtc/matrix_transform.hpp>
 
+#define TOP_LEFT_INDEX 0
+#define BOTTOM_LEFT_INDEX 1
+#define TOP_RIGHT_INDEX 2
+#define BOTTOM_RIGHT_INDEX 3
+
 struct VertexData
 {
     glm::vec3 position;
     glm::vec2 texCoords;
+    glm::vec3 normal;
 };
 
 bool operator==(const VertexData &lhs, const VertexData &rhs)
 {
-    return lhs.position == rhs.position && lhs.texCoords == rhs.texCoords;
+    return lhs.position == rhs.position && lhs.texCoords == rhs.texCoords && lhs.normal == rhs.normal;
 }
 
 static void insertVertex(std::vector<VertexData> &vertices, std::vector<GLuint> &indices, const VertexData &point);
@@ -63,22 +69,36 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
             "layout (location = 1) in vec2 aTexCoord;\n"
+            "layout (location = 2) in vec3 aNormal;\n"
             "out vec2 TexCoord;\n"
+            "out vec3 Normal;\n"
+            "out vec3 FragPos;\n"
             "uniform mat4 view;\n"
             "uniform mat4 projection;\n"
             "void main()\n"
             "{\n"
-            "    gl_Position = projection * view * vec4(aPos, 1.0);\n"
-            "    TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
+            "  gl_Position = projection * view * vec4(aPos, 1.0);\n"
+            "  TexCoord = vec2(aTexCoord.x, aTexCoord.y);\n"
+            "  Normal = aNormal;\n"
+            "  FragPos = aPos;\n"
             "}\0";
         const char *fragmentShaderSource = "#version 330 core\n"
             "out vec4 FragColor;\n"
             "in vec2 TexCoord;\n"
+            "in vec3 Normal;\n"
+            "in vec3 FragPos;\n"
             "uniform sampler2D texture1;\n"
+            "uniform vec3 lightPos;\n"
             "void main()\n"
             "{\n"
-            "    FragColor = texture(texture1, TexCoord);\n"
+            "  vec3 norm = normalize(Normal);\n"
+            "  vec3 lightDir = normalize(lightPos - FragPos);\n"
+            "  float diff = max(dot(norm, lightDir), 0.0);\n"
+            "  vec3 diffuse = diff * vec3(1.0);\n"
+            "  vec3 result = (0.1 + diffuse) * texture(texture1, TexCoord).xyz;\n"
+            "  FragColor = vec4(result, 1.0);\n"
             "}\0";
+
         mazeShader.compile(vertexShaderSource, fragmentShaderSource);
         mazeShader.setMatrix4("projection", projection, GL_TRUE);
 
@@ -89,15 +109,16 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
     // inner walls
     std::vector<VertexData> vertices;
     std::vector<GLuint> indices;
-    VertexData topLeft, topRight, bottomLeft, bottomRight;
+    VertexData v[4];
+    const glm::vec3 normalX = { 1.0f, 0.0f, 0.0f }, normalZ = { 0.0f, 0.0f, -1.0f }, normalY = { 0.0f, 1.0f, 0.0f };
 
     const float columnTextureSize = 1.0f * COLUMN_SIZE / WALL_SIZE;
 
     // floor
-    vertices.push_back( { { 0.0f, 0.0f, 0.0f }, { 0.0f, m_height } } );
-    vertices.push_back( { { 0.0f, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f } } );
-    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, 0.0f }, { width, m_height } } );
-    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { width, 0.0f } } );
+    vertices.push_back( { { 0.0f, 0.0f, 0.0f }, { 0.0f, m_height }, normalY } );
+    vertices.push_back( { { 0.0f, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f }, normalY } );
+    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, 0.0f }, { width, m_height }, normalY } );
+    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { width, 0.0f }, normalY } );
     
     // vertical walls
     for (int x = 1; x < width; ++x) {
@@ -106,37 +127,37 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
             if (y % 2 == 0) {
                 flag = walls[y * width + x];
                 if (flag) {
-                    topLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * (y / 2) }, { (y / 2) * (1.0f + columnTextureSize), 1.0f } };
-                    topRight = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 1.0f } };
-                    bottomLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * (y / 2) }, { (y / 2) * (1.0f + columnTextureSize), 0.0f } };
-                    bottomRight = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 0.0f } };
+                    v[TOP_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * (y / 2) }, { (y / 2) * (1.0f + columnTextureSize), 1.0f }, normalX };
+                    v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalX };
+                    v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * (y / 2) }, { (y / 2) * (1.0f + columnTextureSize), 0.0f }, normalX };
+                    v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalX };
                 }
             }
             else {
                 // vertical columns
-                topLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) - COLUMN_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 1.0f } };
-                topRight = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) }, { (y / 2) * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 1.0f } };
-                bottomLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) - COLUMN_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 0.0f } };
-                bottomRight = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) }, { (y / 2) * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 0.0f } };
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) - COLUMN_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalX };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) }, { (y / 2) * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 1.0f }, normalX };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) - COLUMN_SIZE }, { (y / 2) * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalX };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, (WALL_SIZE + COLUMN_SIZE) * ((y + 1) / 2) }, { (y / 2) * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 0.0f }, normalX };
             }
             if (flag) {
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, topRight );
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, bottomLeft);
-                insertVertex(vertices, indices, topLeft);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
                 
-                topLeft.position.x -= COLUMN_SIZE;
-                topRight.position.x -= COLUMN_SIZE;
-                bottomLeft.position.x -= COLUMN_SIZE;
-                bottomRight.position.x -= COLUMN_SIZE;
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, topRight );
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, bottomLeft);
+                for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+                    v[k].position.x -= COLUMN_SIZE;
+                    v[k].normal *= -1;
+                }
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
                 numPoints += 12;
             }
         }
@@ -149,10 +170,10 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
             if (y % 2 == 1) {
                 flag = walls[y * width + x];
                 if (flag) {
-                    topLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize), 1.0f } };
-                    topRight = { { (WALL_SIZE + COLUMN_SIZE) * x + WALL_SIZE, WALL_SIZE, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 1.0f } };
-                    bottomLeft = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize), 0.0f } };
-                    bottomRight = { { (WALL_SIZE + COLUMN_SIZE) * x + WALL_SIZE, 0, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 0.0f } };
+                    v[TOP_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, WALL_SIZE, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize), 1.0f }, normalZ };
+                    v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x + WALL_SIZE, WALL_SIZE, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalZ };
+                    v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x, 0, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize), 0.0f }, normalZ };
+                    v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * x + WALL_SIZE, 0, ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalZ };
                 }
             }
             else {
@@ -160,83 +181,86 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
                     continue;
                 }
                 // horizontal columns
-                topLeft = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1) - COLUMN_SIZE, WALL_SIZE,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 1.0f } };
-                topRight = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1), WALL_SIZE,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 1.0f } };
-                bottomLeft = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1) - COLUMN_SIZE, 0,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 0.0f } };
-                bottomRight = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1), 0,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 0.0f } };
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1) - COLUMN_SIZE, WALL_SIZE,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalZ };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1), WALL_SIZE,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 1.0f }, normalZ };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1) - COLUMN_SIZE, 0,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalZ };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * (x + 1), 0,  ((WALL_SIZE + COLUMN_SIZE) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize) + columnTextureSize + 1.0f, 0.0f }, normalZ };
             }
             if (flag) {
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, topRight );
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, bottomLeft);
-                insertVertex(vertices, indices, topLeft);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
                 
-                topLeft.position.z += COLUMN_SIZE;
-                topRight.position.z += COLUMN_SIZE;
-                bottomLeft.position.z += COLUMN_SIZE;
-                bottomRight.position.z += COLUMN_SIZE;
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, topRight );
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, bottomRight);
-                insertVertex(vertices, indices, topLeft);
-                insertVertex(vertices, indices, bottomLeft);
+                for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+                    v[k].position.z += COLUMN_SIZE;
+                    v[k].normal *= -1;
+                }
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
                 numPoints += 12;
             }
         }
     }
 
     // top outer wall
-    topLeft = { { 0.0f, WALL_SIZE, 0.0f }, { 0.0f, 1.0f } };
-    topRight = { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, WALL_SIZE, 0.0f }, { width, 1.0f } };
-    bottomLeft = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f } };
-    bottomRight = { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, 0.0f }, { width, 0.0f } };
-    insertVertex(vertices, indices, topLeft);
-    insertVertex(vertices, indices, bottomLeft);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, topRight );
-    insertVertex(vertices, indices, topLeft);
+    v[TOP_LEFT_INDEX] = { { 0.0f, WALL_SIZE, 0.0f }, { 0.0f, 1.0f }, -normalZ };
+    v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, WALL_SIZE, 0.0f }, { width, 1.0f }, -normalZ };
+    v[BOTTOM_LEFT_INDEX] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }, -normalZ };
+    v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, 0.0f }, { width, 0.0f }, -normalZ };
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
 
     // bottom outer wall
-    topLeft.position.z = (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE;
-    topRight.position.z = (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE;
-    bottomLeft.position.z = (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE;
-    bottomRight.position.z = (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE;
-    insertVertex(vertices, indices, topLeft);
-    insertVertex(vertices, indices, topRight );
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomLeft);
-    insertVertex(vertices, indices, topLeft);
+    for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+        v[k].position.z = (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE;
+        v[k].normal *= -1;
+    }
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
 
     // left outer wall
-    topLeft = { { 0.0f, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 1.0f } };
-    topRight = { { 0.0f, WALL_SIZE, 0.0f }, { m_height, 1.0f } };
-    bottomLeft = { { 0.0f, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f } };
-    bottomRight = { { 0.0f, 0.0f, 0.0f }, { m_height, 0.0f } };
-    insertVertex(vertices, indices, topLeft);
-    insertVertex(vertices, indices, bottomLeft);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, topRight );
-    insertVertex(vertices, indices, topLeft);
+    v[TOP_LEFT_INDEX] = { { 0.0f, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 1.0f }, normalX };
+    v[TOP_RIGHT_INDEX] = { { 0.0f, WALL_SIZE, 0.0f }, { m_height, 1.0f }, normalX };
+    v[BOTTOM_LEFT_INDEX] = { { 0.0f, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f }, normalX };
+    v[BOTTOM_RIGHT_INDEX] = { { 0.0f, 0.0f, 0.0f }, { m_height, 0.0f }, normalX };
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
 
     // right outer wall
-    topLeft.position.x = (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE;
-    topRight.position.x = (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE;
-    bottomLeft.position.x = (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE;
-    bottomRight.position.x = (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE;
-    insertVertex(vertices, indices, topLeft);
-    insertVertex(vertices, indices, topRight );
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomRight);
-    insertVertex(vertices, indices, bottomLeft);
-    insertVertex(vertices, indices, topLeft);
+    for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+        v[k].position.x = (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE;
+        v[k].normal *= -1;
+    }
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
+    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
 
     numPoints += 24;
+
+    CONSOLE_DEBUG("Vertices count: %d", vertices.size());
+    CONSOLE_DEBUG("Points count: %d", numPoints);
 
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -256,8 +280,9 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
     // texture coord attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)(sizeof(glm::vec3)));
     glEnableVertexAttribArray(1);
-
-
+    // normal attribute
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(VertexData), (void*)(sizeof(glm::vec3) + sizeof(glm::vec2)));
+    glEnableVertexAttribArray(2);
     
     CONSOLE_DEBUG("Maze [%p] created.", this);
 }
@@ -273,14 +298,12 @@ Maze::~Maze()
 
 void Maze::draw()
 {
-
-    // render container
     mazeShader.use();
 
     // create transformations
     glm::mat4 view = camera->GetViewMatrix();
     mazeShader.setMatrix4("view", view);
-
+    mazeShader.setVector3f("lightPos", camera->Position);
     glBindVertexArray(VAO);
     // bind Texture
     glBindTexture(GL_TEXTURE_2D, floorTexture);

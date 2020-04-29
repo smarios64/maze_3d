@@ -32,11 +32,6 @@
 #include <vector>
 #include <algorithm>
 
-#define MAP_WIDTH 0.5f
-#define MAP_HEIGHT 0.5f
-#define MAP_X    0.4f
-#define MAP_Y    0.9f
-
 struct VertexData2D
 {
     glm::vec2 position;
@@ -53,7 +48,7 @@ static VertexData2D playerData = { { 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
 
 static void insertVertex(std::vector<VertexData2D> &vertices, std::vector<GLuint> &indices, const VertexData2D &point);
 
-Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height, Camera *camera)
+Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height, glm::vec3 *camera)
     : numPoints(0), camera(camera), m_width(width), m_height((height + 1) / 2)
 {
     if (minimapShader.id() == -1) {
@@ -78,15 +73,15 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     // inner walls
     std::vector<VertexData2D> vertices;
     std::vector<GLuint> indices;
-    const GLfloat h = MAP_HEIGHT / (height + 1);
-    const GLfloat w = MAP_WIDTH / width;
+    const GLfloat h = MINIMAP_HEIGHT / (height + 1);
+    const GLfloat w = MINIMAP_WIDTH / width;
     const glm::vec3 wallsColor(1.0f, 1.0f, 0.0f);
 
     // background
-    vertices.push_back({ {MAP_X, MAP_Y}, { 0.0f, 0.0f, 0.0f } });  // top left
-    vertices.push_back({ {MAP_X, MAP_Y - MAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } }); // bottom left
-    vertices.push_back({ {MAP_X + MAP_WIDTH, MAP_Y}, { 0.0f, 0.0f, 0.0f } });   // top right
-    vertices.push_back({ {MAP_X + MAP_WIDTH, MAP_Y - MAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } });  // bottom right
+    vertices.push_back({ {MINIMAP_X, MINIMAP_Y}, { 0.0f, 0.0f, 0.0f } });  // top left
+    vertices.push_back({ {MINIMAP_X, MINIMAP_Y - MINIMAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } }); // bottom left
+    vertices.push_back({ {MINIMAP_X + MINIMAP_WIDTH, MINIMAP_Y}, { 0.0f, 0.0f, 0.0f } });   // top right
+    vertices.push_back({ {MINIMAP_X + MINIMAP_WIDTH, MINIMAP_Y - MINIMAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } });  // bottom right
     
     // vertical walls
     for (int x = 1; x < width; ++x) {
@@ -100,8 +95,8 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
                 endY = y;
             }
             else if (startY != -1) {
-                insertVertex(vertices, indices, { { w * x + MAP_X, (h * startY - MAP_Y) * -1 }, wallsColor });
-                insertVertex(vertices, indices, { { w * x + MAP_X, (h * endY - MAP_Y + h * 2) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * x + MINIMAP_X, (h * startY - MINIMAP_Y) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * x + MINIMAP_X, (h * endY - MINIMAP_Y + h * 2) * -1 }, wallsColor });
                 numPoints += 2;
                 endY = startY = -1;
             }
@@ -120,8 +115,8 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
                 endX = x;
             }
             else if (startX != -1) {
-                insertVertex(vertices, indices, { { w * startX + MAP_X, (h * y -  MAP_Y + h) * -1 }, wallsColor });
-                insertVertex(vertices, indices, { { w * endX + MAP_X + w, (h * y - MAP_Y + h) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * startX + MINIMAP_X, (h * y -  MINIMAP_Y + h) * -1 }, wallsColor });
+                insertVertex(vertices, indices, { { w * endX + MINIMAP_X + w, (h * y - MINIMAP_Y + h) * -1 }, wallsColor });
                 numPoints += 2;
                 endX = startX = -1;
             }
@@ -138,6 +133,9 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     }
     indices.push_back(vertices.size() - 4);
     numPoints += 8;
+    
+    CONSOLE_DEBUG("Vertices count: %d", vertices.size());
+    CONSOLE_DEBUG("Points count: %d", numPoints);
     
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
@@ -200,8 +198,8 @@ Minimap::~Minimap()
 
 void Minimap::update()
 {
-    playerData.position.x = camera->Position.x / ((WALL_SIZE + COLUMN_SIZE) * m_width - COLUMN_SIZE) * MAP_WIDTH + MAP_X;
-    playerData.position.y = -(camera->Position.z / ((WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE) * MAP_HEIGHT - MAP_Y);
+    playerData.position.x = camera->x / ((WALL_SIZE + COLUMN_SIZE) * m_width - COLUMN_SIZE) * MINIMAP_WIDTH + MINIMAP_X;
+    playerData.position.y = -(camera->z / ((WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE) * MINIMAP_HEIGHT - MINIMAP_Y);
 }
 
 void Minimap::draw()

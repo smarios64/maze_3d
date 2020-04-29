@@ -25,12 +25,12 @@
 #ifndef MINIMAP_H
 #define MINIMAP_H
 
-class Camera;
+#include "glm/vec3.hpp"
 
 class Minimap
 {
 public: 
-    Minimap(bool *walls, const unsigned int width, const unsigned int height, Camera *camera);
+    Minimap(bool *walls, const unsigned int width, const unsigned int height, glm::vec3 *camera);
     virtual ~Minimap();
 
     void update();
@@ -40,7 +40,7 @@ private:
     unsigned int VBO, VAO, EBO, player_VBO, player_VAO;
     unsigned int numPoints;
     unsigned int m_width, m_height;
-    Camera *camera;
+    glm::vec3 *camera;
 };
 
 #endif

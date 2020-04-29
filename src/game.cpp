@@ -84,7 +84,7 @@ Game::Game()
     }
     resetMaze();
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
-    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera.Position);
     m_maze = new Maze(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
 
     camera.Position = glm::vec3(WALL_SIZE / 2.0f);
@@ -120,7 +120,7 @@ void Game::reset()
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
     delete m_minimap;
     delete m_maze;
-    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
+    m_minimap = new Minimap(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera.Position);
     m_maze = new Maze(walls[0], MAZE_WIDTH, MAZE_HEIGHT * 2 - 1, &camera);
 
     camera.Position = glm::vec3(WALL_SIZE / 2.0f);
