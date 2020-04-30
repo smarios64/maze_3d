@@ -56,7 +56,7 @@ static void insertVertex(std::vector<VertexData> &vertices, std::vector<GLuint> 
 static unsigned int makeTexture(const char *texturePath);
 static Shader mazeShader;
 
-static unsigned int wallTexture, floorTexture;
+static unsigned int wallTexture_D, wallTexture_N;
 
 Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Camera *camera)
     : numPoints(0), camera(camera)
@@ -64,7 +64,7 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
     const unsigned int m_height = (height + 1) / 2.0f;
     if (mazeShader.id() == -1) {
         glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(60.0f), SCR_WIDTH / SCR_HEIGHT, 0.1f, 100.0f);
+        projection = glm::perspective(glm::radians(60.0f), SCR_WIDTH / SCR_HEIGHT, 0.1f, (WALL_SIZE + COLUMN_SIZE) * MAX(m_height, width));
 
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
@@ -87,23 +87,32 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
             "in vec2 TexCoord;\n"
             "in vec3 Normal;\n"
             "in vec3 FragPos;\n"
-            "uniform sampler2D texture1;\n"
+            "uniform sampler2D texture_D;\n"
+            "uniform sampler2D texture_N;\n"
             "uniform vec3 lightPos;\n"
             "void main()\n"
             "{\n"
-            "  vec3 norm = normalize(Normal);\n"
+            "  vec3 normal = texture(texture_N, TexCoord).rgb;"
+            "  normal = normalize(normal * 2.0 - 1.0);"
+            "  if (Normal.x != 0)"
+            "    normal = normal.zyx;\n"
+            "  else if (Normal.y != 0)"
+            "    normal = normal.xzy;\n"
+            "  vec3 norm = normal * normalize(Normal);\n"
             "  vec3 lightDir = normalize(lightPos - FragPos);\n"
             "  float diff = max(dot(norm, lightDir), 0.0);\n"
             "  vec3 diffuse = diff * vec3(1.0);\n"
-            "  vec3 result = (0.1 + diffuse) * texture(texture1, TexCoord).xyz;\n"
+            "  vec3 result = (0.1 + diffuse) * texture(texture_D, TexCoord).rgb;\n"
             "  FragColor = vec4(result, 1.0);\n"
             "}\0";
 
         mazeShader.compile(vertexShaderSource, fragmentShaderSource);
         mazeShader.setMatrix4("projection", projection, GL_TRUE);
+        mazeShader.setInteger("texture_D", 0);
+        mazeShader.setInteger("texture_N", 1);
 
-        wallTexture = makeTexture("./resources/textures/wall_diffuse.jpg");
-        floorTexture = makeTexture("./resources/textures/ground_diffuse.jpg");
+        wallTexture_D = makeTexture("./resources/textures/wall_diffuse.jpg");
+        wallTexture_N = makeTexture("./resources/textures/wall_normal.jpg");
     }
 
     // inner walls
@@ -119,6 +128,11 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
     vertices.push_back( { { 0.0f, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f }, normalY } );
     vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, 0.0f }, { width, m_height }, normalY } );
     vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, 0.0f, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { width, 0.0f }, normalY } );
+    // ceiling
+    vertices.push_back( { { 0.0f, WALL_SIZE, 0.0f }, { 0.0f, m_height }, -normalY } );
+    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, WALL_SIZE, 0.0f }, { width, m_height }, -normalY } );
+    vertices.push_back( { { 0.0f, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { 0.0f, 0.0f }, -normalY } );
+    vertices.push_back( { { (WALL_SIZE + COLUMN_SIZE) * width - COLUMN_SIZE, WALL_SIZE, (WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE }, { width, 0.0f }, -normalY } );
     
     // vertical walls
     for (int x = 1; x < width; ++x) {
@@ -299,17 +313,18 @@ Maze::~Maze()
 void Maze::draw()
 {
     mazeShader.use();
-
     // create transformations
     glm::mat4 view = camera->GetViewMatrix();
     mazeShader.setMatrix4("view", view);
     mazeShader.setVector3f("lightPos", camera->Position);
     glBindVertexArray(VAO);
     // bind Texture
-    glBindTexture(GL_TEXTURE_2D, floorTexture);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, wallTexture_D);
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, wallTexture_N);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    // bind Texture
-    glBindTexture(GL_TEXTURE_2D, wallTexture);
+    glDrawArrays(GL_TRIANGLE_STRIP, 4, 4);
     glDrawElements(GL_TRIANGLES, numPoints, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
@@ -345,6 +360,7 @@ static unsigned int makeTexture(const char *texturePath)
     // load image, create texture and generate mipmaps
     int w, h, nrChannels;
     
+    stbi_set_flip_vertically_on_load(true); 
     unsigned char *data = stbi_load(texturePath, &w, &h, &nrChannels, 0);
     if (data) {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, w, h, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
