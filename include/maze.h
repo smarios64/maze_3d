@@ -31,7 +31,7 @@ class Maze
 {
 public:
 
-    Maze(bool *walls, const unsigned int width, const unsigned int height, Camera *camera);
+    Maze(bool *walls, Camera *camera);
     virtual ~Maze();
 
     void draw();

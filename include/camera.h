@@ -136,6 +136,7 @@ private:
 
     glm::vec3 processMovement(glm::vec3 movementOffset)
     {
+        return movementOffset;
         static const glm::vec2 normVector((WALL_SIZE * MAZE_WIDTH) / ((WALL_SIZE + COLUMN_SIZE) * MAZE_WIDTH - COLUMN_SIZE),
                                           (WALL_SIZE * MAZE_HEIGHT) / ((WALL_SIZE + COLUMN_SIZE) * MAZE_HEIGHT - COLUMN_SIZE));
                      

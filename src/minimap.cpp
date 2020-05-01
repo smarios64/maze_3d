@@ -48,8 +48,8 @@ static VertexData2D playerData = { { 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
 
 static void insertVertex(std::vector<VertexData2D> &vertices, std::vector<GLuint> &indices, const VertexData2D &point);
 
-Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int height, glm::vec3 *camera)
-    : numPoints(0), camera(camera), m_width(width), m_height((height + 1) / 2)
+Minimap::Minimap(bool *walls, glm::vec3 *camera)
+    : numPoints(0), camera(camera)
 {
     if (minimapShader.id() == -1) {
         const char *vertexShaderSource = "#version 330 core\n"
@@ -73,8 +73,8 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     // inner walls
     std::vector<VertexData2D> vertices;
     std::vector<GLuint> indices;
-    const GLfloat h = MINIMAP_HEIGHT / (height + 1);
-    const GLfloat w = MINIMAP_WIDTH / width;
+    const GLfloat h = MINIMAP_HEIGHT / (MAZE_HEIGHT * 2);
+    const GLfloat w = MINIMAP_WIDTH / MAZE_WIDTH;
     const glm::vec3 wallsColor(1.0f, 1.0f, 0.0f);
 
     // background
@@ -84,11 +84,11 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     vertices.push_back({ {MINIMAP_X + MINIMAP_WIDTH, MINIMAP_Y - MINIMAP_HEIGHT}, { 0.0f, 0.0f, 0.0f } });  // bottom right
     
     // vertical walls
-    for (int x = 1; x < width; ++x) {
+    for (int x = 1; x < MAZE_WIDTH; ++x) {
         int startY = -1;
         int endY = -1;
-        for (int y = 0; y < height + 2; y += 2) {
-            if (y < height && walls[y * width + x]) {
+        for (int y = 0; y <= MAZE_HEIGHT * 2; y += 2) {
+            if (y < MAZE_HEIGHT * 2 - 1 && walls[y * MAZE_WIDTH + x]) {
                 if (startY == -1) {
                     startY = y;
                 }
@@ -104,11 +104,11 @@ Minimap::Minimap(bool *walls, const unsigned int width, const unsigned int heigh
     }
     
     // horizontal walls
-    for (int y = 1; y < height; y += 2) {
+    for (int y = 1; y < MAZE_HEIGHT * 2 - 1; y += 2) {
         int startX = -1;
         int endX = -1;
-        for (int x = 0; x <= width; ++x) {
-            if (x < width && walls[y * width + x]) {
+        for (int x = 0; x <= MAZE_WIDTH; ++x) {
+            if (x < MAZE_WIDTH && walls[y * MAZE_WIDTH + x]) {
                 if (startX == -1) {
                     startX = x;
                 }
@@ -198,8 +198,8 @@ Minimap::~Minimap()
 
 void Minimap::update()
 {
-    playerData.position.x = camera->x / ((WALL_SIZE + COLUMN_SIZE) * m_width - COLUMN_SIZE) * MINIMAP_WIDTH + MINIMAP_X;
-    playerData.position.y = -(camera->z / ((WALL_SIZE + COLUMN_SIZE) * m_height - COLUMN_SIZE) * MINIMAP_HEIGHT - MINIMAP_Y);
+    playerData.position.x = camera->x / ((WALL_SIZE + COLUMN_SIZE) * MAZE_WIDTH - COLUMN_SIZE) * MINIMAP_WIDTH + MINIMAP_X;
+    playerData.position.y = -(camera->z / ((WALL_SIZE + COLUMN_SIZE) * MAZE_HEIGHT - COLUMN_SIZE) * MINIMAP_HEIGHT - MINIMAP_Y);
 }
 
 void Minimap::draw()
