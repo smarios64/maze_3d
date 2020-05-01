@@ -7,6 +7,9 @@
 
 #include <vector>
 
+#include "common.h"
+#include "console.h"
+
 // Default camera values
 const float YAW         = -90.0f;
 const float PITCH       =  0.0f;
@@ -43,7 +46,12 @@ public:
     float Zoom;
 
     // Constructor with vectors
-    Camera(glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) : Front(glm::vec3(0.0f, 0.0f, -1.0f)), MovementSpeed(SPEED), MouseSensitivity(SENSITIVITY), Zoom(ZOOM)
+    Camera(bool *walls, glm::vec3 position = glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f), float yaw = YAW, float pitch = PITCH) :
+        Front(glm::vec3(0.0f, 0.0f, -1.0f)),
+        MovementSpeed(SPEED),
+        MouseSensitivity(SENSITIVITY),
+        Zoom(ZOOM),
+        m_walls(walls)
     {
         Position = position;
         WorldUp = up;
@@ -71,21 +79,23 @@ public:
     void ProcessKeyboard(Camera_Movement direction, float deltaTime)
     {
         float velocity = MovementSpeed * deltaTime;
-        glm::vec3 front = Front;
+        glm::vec3 front = Front, desiredMovement;
         front.y = 0;
         front = glm::normalize(front);
         if (direction == FORWARD)
-            Position += front * velocity;
+            desiredMovement = front * velocity;
         if (direction == BACKWARD)
-            Position -= front * velocity;
+            desiredMovement = -(front * velocity);
         if (direction == LEFT)
-            Position -= Right * velocity;
+            desiredMovement = -(Right * velocity);
         if (direction == RIGHT)
-            Position += Right * velocity;
+            desiredMovement = Right * velocity;
         if (direction == UP)
-            Position += WorldUp * velocity;
+            desiredMovement = WorldUp * velocity;
         if (direction == DOWN)
-            Position += -WorldUp * velocity;
+            desiredMovement = -(WorldUp * velocity);
+        
+        Position += processMovement(desiredMovement);
     }
 
     // Processes input received from a mouse input system. Expects the offset value in both the x and y direction.
@@ -122,6 +132,57 @@ public:
     }
 
 private:
+    bool *m_walls;
+
+    glm::vec3 processMovement(glm::vec3 movementOffset)
+    {
+        static const glm::vec2 normVector((WALL_SIZE * MAZE_WIDTH) / ((WALL_SIZE + COLUMN_SIZE) * MAZE_WIDTH - COLUMN_SIZE),
+                                          (WALL_SIZE * MAZE_HEIGHT) / ((WALL_SIZE + COLUMN_SIZE) * MAZE_HEIGHT - COLUMN_SIZE));
+                     
+        glm::vec3 ret;        
+        glm::vec2 curPos(Position.x * normVector.x, Position.z * normVector.y);
+        glm::vec2 nextPos((Position.x + movementOffset.x) * normVector.x,
+                          (Position.z + movementOffset.z) * normVector.y);  
+        bool hasWall = false;
+        int minIndex, maxIndex;
+
+        if (nextPos.x > 0.0f && nextPos.x < MAZE_WIDTH * WALL_SIZE) {
+            minIndex = MIN(curPos.x / WALL_SIZE, nextPos.x / WALL_SIZE),
+            maxIndex = MAX(curPos.x / WALL_SIZE, nextPos.x / WALL_SIZE);
+            if (minIndex != maxIndex) {
+                for (int x = minIndex + 1; x <= maxIndex; ++x) {
+                    if (m_walls[(int)(curPos.y / WALL_SIZE) * 2 * MAZE_WIDTH + x]) {
+                        hasWall = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasWall) {
+                ret.x = movementOffset.x;
+            }
+        }
+             
+        if (nextPos.y > 0.0f && nextPos.y < MAZE_HEIGHT * WALL_SIZE) {           
+            hasWall = false;
+            minIndex = MIN(curPos.y / WALL_SIZE, nextPos.y / WALL_SIZE);
+            maxIndex = MAX(curPos.y / WALL_SIZE, nextPos.y / WALL_SIZE);
+
+            for (int y = minIndex; y < maxIndex; ++y) {
+                if (m_walls[(y * 2 + 1) * MAZE_WIDTH + (int)(curPos.x / WALL_SIZE)]) {
+                    hasWall = true;
+                    break;
+                }
+            }
+
+            if (!hasWall) {
+                ret.z = movementOffset.z;
+            }
+        }
+        ret.y = movementOffset.y;
+        return ret;
+    }
+
     // Calculates the front vector from the Camera's (updated) Euler Angles
     void updateCameraVectors()
     {

@@ -56,7 +56,7 @@ Game *Game::Instance()
     return &instance;
 }
 
-Game::Game()
+Game::Game() : camera(walls[0])
 {
     srand(time(0));
     // initialize maze cells

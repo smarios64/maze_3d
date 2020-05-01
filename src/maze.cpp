@@ -64,7 +64,7 @@ Maze::Maze(bool *walls, const unsigned int width, const unsigned int height, Cam
     const unsigned int m_height = (height + 1) / 2.0f;
     if (mazeShader.id() == -1) {
         glm::mat4 projection = glm::mat4(1.0f);
-        projection = glm::perspective(glm::radians(60.0f), SCR_WIDTH / SCR_HEIGHT, 0.1f, (WALL_SIZE + COLUMN_SIZE) * MAX(m_height, width));
+        projection = glm::perspective(glm::radians(60.0f), SCR_WIDTH / SCR_HEIGHT, 0.05f, (WALL_SIZE + COLUMN_SIZE) * MAX(m_height, width));
 
         const char *vertexShaderSource = "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"
