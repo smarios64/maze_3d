@@ -40,6 +40,24 @@
 #define TOP_RIGHT_INDEX 2
 #define BOTTOM_RIGHT_INDEX 3
 
+#define INSERT_CLOCKWISE() do { \
+                            insertVertex(vertices, indices, v[TOP_LEFT_INDEX]); \
+                            insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] ); \
+                            insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]); \
+                            insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]); \
+                            insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]); \
+                            insertVertex(vertices, indices, v[TOP_LEFT_INDEX]); \
+                        } while (0)
+
+#define INSERT_COUNTERCLOCKWISE() do { \
+                            insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]); \
+                            insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] ); \
+                            insertVertex(vertices, indices, v[TOP_LEFT_INDEX]); \
+                            insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]); \
+                            insertVertex(vertices, indices, v[TOP_LEFT_INDEX]); \
+                            insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]); \
+                        } while (0)
+
 struct VertexData
 {
     glm::vec3 position;
@@ -146,29 +164,38 @@ Maze::Maze(bool *walls, Camera *camera)
                 endY = y / 2;
             }
             else if (startY != -1) {
-                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * startY }, { startY * (1.0f + columnTextureSize), 1.0f }, normalX };
-                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * endY + WALL_SIZE }, { endY * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalX };
-                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, 0, (WALL_SIZE + WALL_THICKNESS) * startY }, { startY * (1.0f + columnTextureSize), 0.0f }, normalX };
-                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, 0, (WALL_SIZE + WALL_THICKNESS) * endY + WALL_SIZE }, { endY * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalX };
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { startY * (1.0f + columnTextureSize) - columnTextureSize, 1.0f }, normalX };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * endY + WALL_SIZE + WALL_THICKNESS}, { endY * (1.0f + columnTextureSize) + 1.0f + columnTextureSize, 1.0f }, normalX };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, 0, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { startY * (1.0f + columnTextureSize) - columnTextureSize, 0.0f }, normalX };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, 0, (WALL_SIZE + WALL_THICKNESS) * endY + WALL_SIZE + WALL_THICKNESS }, { endY * (1.0f + columnTextureSize) + 1.0f + columnTextureSize, 0.0f }, normalX };
 
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                INSERT_CLOCKWISE();
                 
                 for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
                     v[k].position.x -= WALL_THICKNESS;
                     v[k].normal *= -1;
                 }
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+                INSERT_COUNTERCLOCKWISE();
                 numPoints += 12;
+
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x - WALL_THICKNESS, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { x * (1.0f + columnTextureSize), 1.0f }, normalZ };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { x * (1.0f + columnTextureSize) + columnTextureSize, 1.0f }, normalZ };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x - WALL_THICKNESS, 0, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { x * (1.0f + columnTextureSize), 0.0f }, normalZ };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * x, 0, (WALL_SIZE + WALL_THICKNESS) * startY - WALL_THICKNESS }, { x * (1.0f + columnTextureSize) + columnTextureSize, 0.0f }, normalZ };
+                
+                if (startY > 0 && !walls[(startY * 2 - 1) * MAZE_WIDTH + (x - 1)] && !walls[(startY * 2 - 1) * MAZE_WIDTH + x]) {
+                    INSERT_CLOCKWISE();
+                    numPoints += 6;
+                }
+                if (endY < MAZE_HEIGHT - 1 && !walls[(endY * 2 + 1) * MAZE_WIDTH + (x - 1)] && !walls[(endY * 2 + 1) * MAZE_WIDTH + x]) {
+                    for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+                        v[k].position.z = (WALL_SIZE + WALL_THICKNESS) * (endY + 1);
+                        v[k].normal *= -1;
+                    }
+                    INSERT_COUNTERCLOCKWISE();
+                    numPoints += 6;
+                }
+
                 endY = startY = -1;
             }
         }
@@ -187,29 +214,37 @@ Maze::Maze(bool *walls, Camera *camera)
                 endX = x;
             }
             else if (startX != -1) {
-                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX, WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { startX * (1.0f + columnTextureSize), 1.0f }, normalZ };
-                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * endX + WALL_SIZE, WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { endX * (1.0f + columnTextureSize) + 1.0f, 1.0f }, normalZ };
-                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { startX * (1.0f + columnTextureSize), 0.0f }, normalZ };
-                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * endX + WALL_SIZE, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { endX * (1.0f + columnTextureSize) + 1.0f, 0.0f }, normalZ };
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS , WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { startX * (1.0f + columnTextureSize) - columnTextureSize, 1.0f }, normalZ };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * endX + WALL_SIZE + WALL_THICKNESS, WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { endX * (1.0f + columnTextureSize) + 1.0f + columnTextureSize, 1.0f }, normalZ };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { startX * (1.0f + columnTextureSize) - columnTextureSize, 0.0f }, normalZ };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * endX + WALL_SIZE + WALL_THICKNESS, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { endX * (1.0f + columnTextureSize) + 1.0f + columnTextureSize, 0.0f }, normalZ };
 
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+                INSERT_CLOCKWISE();
                 
                 for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
                     v[k].position.z += WALL_THICKNESS;
                     v[k].normal *= -1;
                 }
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-                insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-                insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
+                INSERT_COUNTERCLOCKWISE();
                 numPoints += 12;
+
+                v[TOP_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS, WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE)}, { x * (1.0f + columnTextureSize), 1.0f }, -normalX };
+                v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS, WALL_SIZE, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE + WALL_THICKNESS) }, { x * (1.0f + columnTextureSize) + columnTextureSize, 1.0f }, -normalX };
+                v[BOTTOM_LEFT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE) }, { x * (1.0f + columnTextureSize), 0.0f }, -normalX };
+                v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * startX - WALL_THICKNESS, 0, ((WALL_SIZE + WALL_THICKNESS) * (y / 2) + WALL_SIZE + WALL_THICKNESS) }, { x * (1.0f + columnTextureSize) + columnTextureSize, 0.0f }, -normalX };
+                
+                if (startX > 0 && !walls[(y - 1) * MAZE_WIDTH + startX] && !walls[(y + 1) * MAZE_WIDTH + startX]) {
+                    INSERT_COUNTERCLOCKWISE();
+                    numPoints += 6;
+                }
+                if (endX < MAZE_WIDTH - 1 && !walls[(y - 1) * MAZE_WIDTH + endX + 1] && !walls[(y + 1) * MAZE_WIDTH + endX + 1]) {
+                    for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
+                        v[k].position.x = (WALL_SIZE + WALL_THICKNESS) * (endX + 1);
+                        v[k].normal *= -1;
+                    }
+                    INSERT_CLOCKWISE();
+                    numPoints += 6;
+                }
                 endX = startX = -1;
             }
         }
@@ -220,48 +255,28 @@ Maze::Maze(bool *walls, Camera *camera)
     v[TOP_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS, WALL_SIZE, 0.0f }, { MAZE_WIDTH, 1.0f }, -normalZ };
     v[BOTTOM_LEFT_INDEX] = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f }, -normalZ };
     v[BOTTOM_RIGHT_INDEX] = { { (WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS, 0.0f, 0.0f }, { MAZE_WIDTH, 0.0f }, -normalZ };
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    INSERT_COUNTERCLOCKWISE();
 
     // bottom outer wall
     for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
         v[k].position.z = (WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS;
         v[k].normal *= -1;
     }
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    INSERT_CLOCKWISE();
 
     // left outer wall
     v[TOP_LEFT_INDEX] = { { 0.0f, WALL_SIZE, (WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS }, { 0.0f, 1.0f }, normalX };
     v[TOP_RIGHT_INDEX] = { { 0.0f, WALL_SIZE, 0.0f }, { MAZE_HEIGHT, 1.0f }, normalX };
     v[BOTTOM_LEFT_INDEX] = { { 0.0f, 0.0f, (WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS }, { 0.0f, 0.0f }, normalX };
     v[BOTTOM_RIGHT_INDEX] = { { 0.0f, 0.0f, 0.0f }, { MAZE_HEIGHT, 0.0f }, normalX };
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    INSERT_COUNTERCLOCKWISE();
 
     // right outer wall
     for (int k = 0; k < sizeof(v) / sizeof(v[0]); ++k) {
         v[k].position.x = (WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS;
         v[k].normal *= -1;
     }
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_RIGHT_INDEX] );
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_RIGHT_INDEX]);
-    insertVertex(vertices, indices, v[BOTTOM_LEFT_INDEX]);
-    insertVertex(vertices, indices, v[TOP_LEFT_INDEX]);
+    INSERT_CLOCKWISE();
 
     numPoints += 24;
 
