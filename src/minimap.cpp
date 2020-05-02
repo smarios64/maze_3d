@@ -198,8 +198,8 @@ Minimap::~Minimap()
 
 void Minimap::update()
 {
-    playerData.position.x = camera->x / ((WALL_SIZE + COLUMN_SIZE) * MAZE_WIDTH - COLUMN_SIZE) * MINIMAP_WIDTH + MINIMAP_X;
-    playerData.position.y = -(camera->z / ((WALL_SIZE + COLUMN_SIZE) * MAZE_HEIGHT - COLUMN_SIZE) * MINIMAP_HEIGHT - MINIMAP_Y);
+    playerData.position.x = camera->x / ((WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS) * MINIMAP_WIDTH + MINIMAP_X;
+    playerData.position.y = -(camera->z / ((WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS) * MINIMAP_HEIGHT - MINIMAP_Y);
 }
 
 void Minimap::draw()

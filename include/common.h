@@ -12,8 +12,8 @@
 #define ABS(a) ((a) >= 0 ? (a) : -(a))
 
 #define WALL_SIZE 1.5f
-#define COLUMN_SIZE 0.2f
-#define HALF_COLUMN_SIZE (COLUMN_SIZE / 2.0f)
+#define WALL_THICKNESS 0.2f
+#define HALF_WALL_THICKNESS (WALL_THICKNESS / 2.0f)
 
 #define MINIMAP_WIDTH 0.5f
 #define MINIMAP_HEIGHT 0.5f
