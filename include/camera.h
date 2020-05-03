@@ -140,19 +140,25 @@ private:
         static const glm::vec2 normVector((WALL_SIZE * MAZE_WIDTH) / ((WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS),
                                           (WALL_SIZE * MAZE_HEIGHT) / ((WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS));
                      
-        glm::vec3 ret;        
-        glm::vec2 curPos(Position.x * normVector.x, Position.z * normVector.y);
-        glm::vec2 nextPos((Position.x + movementOffset.x) * normVector.x,
+        glm::vec3 ret;  
+        glm::vec2 curPosNorm(Position.x * normVector.x, Position.z * normVector.y);
+        glm::vec2 nextPosNorm((Position.x + movementOffset.x) * normVector.x,
                           (Position.z + movementOffset.z) * normVector.y);  
         bool hasWall = false;
         int minIndex, maxIndex;
 
-        if (nextPos.x > 0.0f && nextPos.x < MAZE_WIDTH * WALL_SIZE) {
-            minIndex = MIN(curPos.x / WALL_SIZE, nextPos.x / WALL_SIZE),
-            maxIndex = MAX(curPos.x / WALL_SIZE, nextPos.x / WALL_SIZE);
+        if (nextPosNorm.x > 0.1f * normVector.x && nextPosNorm.x < MAZE_WIDTH * WALL_SIZE - 0.1f * normVector.x) {
+            if (curPosNorm.x < nextPosNorm.x) {
+                minIndex = MIN((curPosNorm.x + (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE, (nextPosNorm.x + (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE);
+                maxIndex = MAX((curPosNorm.x + (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE, (nextPosNorm.x + (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE);
+            }
+            else {
+                minIndex = MIN((curPosNorm.x - (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE, (nextPosNorm.x - (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE);
+                maxIndex = MAX((curPosNorm.x - (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE, (nextPosNorm.x - (WALL_THICKNESS + 0.1f) * normVector.x) / WALL_SIZE);
+            }
             if (minIndex != maxIndex) {
                 for (int x = minIndex + 1; x <= maxIndex; ++x) {
-                    if (m_walls[(int)(curPos.y / WALL_SIZE) * 2 * MAZE_WIDTH + x]) {
+                    if (m_walls[(int)(curPosNorm.y / WALL_SIZE) * 2 * MAZE_WIDTH + x]) {
                         hasWall = true;
                         break;
                     }
@@ -164,13 +170,19 @@ private:
             }
         }
              
-        if (nextPos.y > 0.0f && nextPos.y < MAZE_HEIGHT * WALL_SIZE) {           
+        if (nextPosNorm.y > 0.1f * normVector.y && nextPosNorm.y < MAZE_HEIGHT * WALL_SIZE - 0.1f * normVector.y) {           
             hasWall = false;
-            minIndex = MIN(curPos.y / WALL_SIZE, nextPos.y / WALL_SIZE);
-            maxIndex = MAX(curPos.y / WALL_SIZE, nextPos.y / WALL_SIZE);
+            if (curPosNorm.y < nextPosNorm.y) {
+                minIndex = MIN((curPosNorm.y + (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE, (nextPosNorm.y + (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE);
+                maxIndex = MAX((curPosNorm.y + (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE, (nextPosNorm.y + (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE);
+            }
+            else {
+                minIndex = MIN((curPosNorm.y - (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE, (nextPosNorm.y - (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE);
+                maxIndex = MAX((curPosNorm.y - (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE, (nextPosNorm.y - (WALL_THICKNESS + 0.1f) * normVector.y) / WALL_SIZE);
+            }
 
             for (int y = minIndex; y < maxIndex; ++y) {
-                if (m_walls[(y * 2 + 1) * MAZE_WIDTH + (int)(curPos.x / WALL_SIZE)]) {
+                if (m_walls[(y * 2 + 1) * MAZE_WIDTH + (int)(curPosNorm.x / WALL_SIZE)]) {
                     hasWall = true;
                     break;
                 }
