@@ -26,7 +26,7 @@
 #include "common.h"
 #include "shader.h"
 #include "console.h"
-#include "camera.h"
+#include "player.h"
 
 #define STB_IMAGE_IMPLEMENTATION // nessesary to use stb_image.h
 #include "stb_image.h"
@@ -76,8 +76,8 @@ static Shader mazeShader;
 
 static unsigned int wallTexture_D, wallTexture_N;
 
-Maze::Maze(bool *walls, Camera *camera)
-    : numPoints(0), camera(camera)
+Maze::Maze(bool *walls)
+    : numPoints(0), player(walls)
 {
     if (mazeShader.id() == -1) {
         glm::mat4 projection = glm::mat4(1.0f);
@@ -321,9 +321,9 @@ void Maze::draw()
 {
     mazeShader.use();
     // create transformations
-    glm::mat4 view = camera->GetViewMatrix();
+    glm::mat4 view = player.getViewMatrix();
     mazeShader.setMatrix4("view", view);
-    mazeShader.setVector3f("lightPos", camera->Position);
+    mazeShader.setVector3f("lightPos", player.Position);
     glBindVertexArray(VAO);
     // bind Texture
     glActiveTexture(GL_TEXTURE0);

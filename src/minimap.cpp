@@ -24,7 +24,7 @@
 
 #include "minimap.h"
 #include "console.h"
-#include "camera.h"
+#include "player.h"
 #include "shader.h"
 #include "common.h"
 
@@ -48,8 +48,8 @@ static VertexData2D playerData = { { 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } };
 
 static void insertVertex(std::vector<VertexData2D> &vertices, std::vector<GLuint> &indices, const VertexData2D &point);
 
-Minimap::Minimap(bool *walls, glm::vec3 *camera)
-    : numPoints(0), camera(camera)
+Minimap::Minimap(bool *walls, glm::vec3 *playerPos)
+    : numPoints(0), playerPos(playerPos)
 {
     if (minimapShader.id() == -1) {
         const char *vertexShaderSource = "#version 330 core\n"
@@ -198,8 +198,8 @@ Minimap::~Minimap()
 
 void Minimap::update()
 {
-    playerData.position.x = camera->x / ((WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS) * MINIMAP_WIDTH + MINIMAP_X;
-    playerData.position.y = -(camera->z / ((WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS) * MINIMAP_HEIGHT - MINIMAP_Y);
+    playerData.position.x = playerPos->x / ((WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS) * MINIMAP_WIDTH + MINIMAP_X;
+    playerData.position.y = -(playerPos->z / ((WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS) * MINIMAP_HEIGHT - MINIMAP_Y);
 }
 
 void Minimap::draw()

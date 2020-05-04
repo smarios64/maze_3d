@@ -30,7 +30,7 @@
 class Minimap
 {
 public: 
-    Minimap(bool *walls, glm::vec3 *camera);
+    Minimap(bool *walls, glm::vec3 *playerPos);
     virtual ~Minimap();
 
     void update();
@@ -39,7 +39,7 @@ public:
 private:
     unsigned int VBO, VAO, EBO, player_VBO, player_VAO;
     unsigned int numPoints;
-    glm::vec3 *camera;
+    glm::vec3 *playerPos;
 };
 
 #endif

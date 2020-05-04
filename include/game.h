@@ -25,8 +25,6 @@
 #ifndef GAME_H
 #define GAME_H
 
-#include "camera.h"
-
 class MazeCell;
 class Minimap;
 class Maze;
@@ -69,7 +67,6 @@ private:
     void resetMaze();
     void reset();
 
-    Camera camera;
     Minimap *m_minimap;
     Maze    *m_maze;
     bool     m_showMinimap;

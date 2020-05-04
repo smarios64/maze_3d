@@ -25,13 +25,14 @@
 #ifndef MAZE_H
 #define MAZE_H
 
-class Camera;
+#include "player.h"
 
 class Maze
 {
+    friend class Game;
 public:
 
-    Maze(bool *walls, Camera *camera);
+    Maze(bool *walls);
     virtual ~Maze();
 
     void draw();
@@ -39,7 +40,7 @@ public:
 private:
     unsigned int VBO, VAO, EBO;
     unsigned int numPoints;
-    Camera *camera;
+    Player player;
 };
 
 #endif

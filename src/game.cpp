@@ -56,7 +56,7 @@ Game *Game::Instance()
     return &instance;
 }
 
-Game::Game() : camera(walls[0])
+Game::Game()
 {
     srand(time(0));
     // initialize maze cells
@@ -84,18 +84,8 @@ Game::Game() : camera(walls[0])
     }
     resetMaze();
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
-    m_minimap = new Minimap(walls[0], &camera.Position);
-    m_maze = new Maze(walls[0], &camera);
-
-    camera.Position = glm::vec3(WALL_SIZE / 2.0f);
-    if (!walls[0][1]) {
-        camera.Yaw = 0.0f;
-    }
-    else {
-        camera.Yaw = 90.0f;
-    }
-    // trigger an update in camera vectors
-    camera.ProcessMouseMovement(0, 0);
+    m_maze = new Maze(walls[0]);
+    m_minimap = new Minimap(walls[0], &m_maze->player.Position);
 
     CONSOLE_DEBUG("Game [%p] created.", this);
 }
@@ -120,19 +110,8 @@ void Game::reset()
     generateMaze(&cells[rand() % MAZE_HEIGHT][rand() % MAZE_WIDTH]);
     delete m_minimap;
     delete m_maze;
-    m_minimap = new Minimap(walls[0], &camera.Position);
-    m_maze = new Maze(walls[0], &camera);
-
-    camera.Position = glm::vec3(WALL_SIZE / 2.0f);
-    camera.Pitch = 0.0f;
-    if (!walls[0][1]) {
-        camera.Yaw = 0.0f;
-    }
-    else {
-        camera.Yaw = 90.0f;
-    }
-    // trigger an update in camera vectors
-    camera.ProcessMouseMovement(0, 0);
+    m_maze = new Maze(walls[0]);
+    m_minimap = new Minimap(walls[0], &m_maze->player.Position);
 
     CONSOLE_DEBUG("Game [%p] was resetted.", this);
 }
@@ -179,34 +158,34 @@ void Game::resetMaze()
 void Game::update(float deltaTime)
 {
     if (keyStates[KEY_UP_1]) {
-        camera.ProcessKeyboard(Camera::FORWARD, deltaTime);
+        m_maze->player.processMovement(Player::FORWARD, deltaTime);
     }
     if (keyStates[KEY_DOWN_1]) {
-        camera.ProcessKeyboard(Camera::BACKWARD, deltaTime);
+        m_maze->player.processMovement(Player::BACKWARD, deltaTime);
     }
     if (keyStates[KEY_LEFT_1]) {
-        camera.ProcessKeyboard(Camera::LEFT, deltaTime);
+        m_maze->player.processMovement(Player::LEFT, deltaTime);
     }
     if (keyStates[KEY_RIGHT_1]) {
-        camera.ProcessKeyboard(Camera::RIGHT, deltaTime);
+        m_maze->player.processMovement(Player::RIGHT, deltaTime);
     }
     if (keyStates[KEY_MOVE_UP]) {
-        camera.ProcessKeyboard(Camera::UP, deltaTime);
+        m_maze->player.processMovement(Player::UP, deltaTime);
     }
     if (keyStates[KEY_MOVE_DOWN]) {
-        camera.ProcessKeyboard(Camera::DOWN, deltaTime);
+        m_maze->player.processMovement(Player::DOWN, deltaTime);
     }
     if (keyStates[KEY_UP_2]) {
-        camera.ProcessMouseMovement(0, 1000 * deltaTime);
+        m_maze->player.processRotation(0, 1000 * deltaTime);
     }
     if (keyStates[KEY_DOWN_2]) {
-        camera.ProcessMouseMovement(0, -1000 * deltaTime);
+        m_maze->player.processRotation(0, -1000 * deltaTime);
     }
     if (keyStates[KEY_LEFT_2]) {
-        camera.ProcessMouseMovement(-1000 * deltaTime, 0);
+        m_maze->player.processRotation(-1000 * deltaTime, 0);
     }
     if (keyStates[KEY_RIGHT_2]) {
-        camera.ProcessMouseMovement(1000 * deltaTime, 0);
+        m_maze->player.processRotation(1000 * deltaTime, 0);
     }
     m_minimap->update();
 }
@@ -244,5 +223,5 @@ void Game::processMouseInput(double xPos, double yPos)
     lastX = xPos;
     lastY = yPos;
 
-    camera.ProcessMouseMovement(xoffset * 3, yoffset);
+    m_maze->player.processRotation(xoffset * 3, yoffset);
 }

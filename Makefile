@@ -18,7 +18,8 @@ _OBJ= \
 	minimap.o \
 	game.o \
 	maze.o \
-	shader.o
+	shader.o \
+	player.o
 
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
