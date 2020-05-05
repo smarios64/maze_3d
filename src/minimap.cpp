@@ -139,7 +139,7 @@ Minimap::Minimap(bool *walls, glm::vec3 *playerPos)
 
     numPoints += 8;
     
-    CONSOLE_DEBUG("Vertices count: %d", vertices.size());
+    CONSOLE_DEBUG("Vertices count: %lu", vertices.size());
     CONSOLE_DEBUG("Points count: %d", numPoints);
     
     glGenVertexArrays(1, &VAO);
