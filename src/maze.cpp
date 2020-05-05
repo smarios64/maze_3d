@@ -276,6 +276,8 @@ Maze::Maze(bool *walls)
         v[k].position.x = (WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS;
         v[k].normal *= -1;
     }
+    v[TOP_LEFT_INDEX].position.z -= WALL_SIZE;
+    v[BOTTOM_LEFT_INDEX].position.z -= WALL_SIZE;
     INSERT_CLOCKWISE();
 
     numPoints += 24;

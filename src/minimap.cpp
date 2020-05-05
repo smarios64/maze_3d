@@ -124,14 +124,19 @@ Minimap::Minimap(bool *walls, glm::vec3 *playerPos)
     }
 
     // outer walls
-    vertices.push_back({ vertices[3].position, wallsColor });  // bottom right
-    vertices.push_back({ vertices[2].position, wallsColor });   // top right
-    vertices.push_back({ vertices[0].position, wallsColor });  // top left
-    vertices.push_back({ vertices[1].position, wallsColor }); // bottom left
-    for (int i = 8; i > 1; --i) {
-        indices.push_back(vertices.size() - i / 2);
-    }
-    indices.push_back(vertices.size() - 4);
+
+    insertVertex( vertices, indices, { vertices[0].position, wallsColor } ); // top left
+    insertVertex( vertices, indices, { vertices[2].position, wallsColor } ); // top right
+
+    insertVertex( vertices, indices, { vertices[1].position, wallsColor } ); // bottom left
+    insertVertex( vertices, indices, { vertices[3].position, wallsColor } ); // bottom right
+
+    insertVertex( vertices, indices, { vertices[0].position, wallsColor } ); // top left
+    insertVertex( vertices, indices, { vertices[1].position, wallsColor } ); // bottom left
+
+    insertVertex( vertices, indices, { vertices[2].position, wallsColor } ); // top right
+    insertVertex( vertices, indices, { { vertices[3].position.x, vertices[3].position.t + h * 2.0f }, wallsColor } ); // bottom right
+
     numPoints += 8;
     
     CONSOLE_DEBUG("Vertices count: %d", vertices.size());
