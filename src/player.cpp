@@ -72,7 +72,9 @@ void Player::processRotation(float xoffset, float yoffset, GLboolean constrainPi
 
 glm::vec3 Player::validateMovement(glm::vec3 movementOffset)
 {
-    //return movementOffset;
+#ifdef DEBUG
+    return movementOffset;
+#else
     static const glm::vec2 normVector((WALL_SIZE * MAZE_WIDTH) / ((WALL_SIZE + WALL_THICKNESS) * MAZE_WIDTH - WALL_THICKNESS),
                                       (WALL_SIZE * MAZE_HEIGHT) / ((WALL_SIZE + WALL_THICKNESS) * MAZE_HEIGHT - WALL_THICKNESS));
                  
@@ -124,8 +126,8 @@ glm::vec3 Player::validateMovement(glm::vec3 movementOffset)
             ret.z = movementOffset.z;
         }
     }
-    ret.y = movementOffset.y;
     return ret;
+#endif
 }
 
 // Calculates the front vector from the Camera's (updated) Euler Angles

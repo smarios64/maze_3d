@@ -101,6 +101,7 @@ Maze::Maze(bool *walls)
             "}\0";
         const char *fragmentShaderSource = "#version 330 core\n"
             "out vec4 FragColor;\n"
+#ifndef DEBUG
             "in vec2 TexCoord;\n"
             "in vec3 Normal;\n"
             "in vec3 FragPos;\n"
@@ -121,6 +122,11 @@ Maze::Maze(bool *walls)
             "  vec3 diffuse = diff * vec3(1.0);\n"
             "  vec3 result = (0.1 + diffuse) * texture(texture_D, TexCoord).rgb;\n"
             "  FragColor = vec4(result, 1.0);\n"
+#else
+            "void main()\n"
+            "{\n"
+            "  FragColor = vec4(1.0);\n"
+#endif
             "}\0";
 
         mazeShader.compile(vertexShaderSource, fragmentShaderSource);

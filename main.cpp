@@ -41,7 +41,9 @@ int main()
     glGetError(); // Call it once to catch glewInit() bug, all other errors are now from our application.
 
     // uncomment this call to draw in wireframe polygons.
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+#ifdef DEBUG
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+#endif
 
     // render loop
     // -----------
