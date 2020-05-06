@@ -43,7 +43,6 @@ public:
         KEY_RIGHT_2,
         KEY_MOVE_UP,
         KEY_MOVE_DOWN,
-        KEY_MINIMAP,
         KEY_RESET
     };
 
@@ -69,7 +68,6 @@ private:
 
     Minimap *m_minimap;
     Maze    *m_maze;
-    bool     m_showMinimap;
 };
 
 #endif

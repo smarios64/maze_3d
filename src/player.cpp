@@ -57,6 +57,7 @@ void Player::processRotation(float xoffset, float yoffset, GLboolean constrainPi
     xoffset *= MouseSensitivity;
     yoffset *= MouseSensitivity;
     Yaw   += xoffset;
+#ifdef DEBUG
     Pitch += yoffset;
     // Make sure that when pitch is out of bounds, screen doesn't get flipped
     if (constrainPitch)
@@ -66,6 +67,7 @@ void Player::processRotation(float xoffset, float yoffset, GLboolean constrainPi
         if (Pitch < -89.0f)
             Pitch = -89.0f;
     }
+#endif
     // Update Front, Right and Up Vectors using the updated Euler angles
     updateViewVectors();
 }

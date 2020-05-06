@@ -99,9 +99,7 @@ Game::~Game()
 void Game::draw()
 {
     m_maze->draw();
-    if (m_showMinimap) {
-        m_minimap->draw();
-    }
+    m_minimap->draw();
 }
 
 void Game::reset()
@@ -195,9 +193,6 @@ void Game::processKeyInput(InputKey key, InputKeyState state)
     // conditional to handle undesired continuous key events
     if (!keyStates[key] && state == KEY_STATE_PRESSED) {
         switch (key) {
-            case KEY_MINIMAP:
-                m_showMinimap = !m_showMinimap;
-                break;
             case KEY_RESET:
                 reset();
                 break;

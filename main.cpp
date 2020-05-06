@@ -95,7 +95,6 @@ void processInput(GLFWwindow *window)
         { GLFW_KEY_RIGHT, Game::KEY_RIGHT_2 },
         { GLFW_KEY_E, Game::KEY_MOVE_UP },
         { GLFW_KEY_Q, Game::KEY_MOVE_DOWN },
-        { GLFW_KEY_M, Game::KEY_MINIMAP },
         { GLFW_KEY_R, Game::KEY_RESET }
     };
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
